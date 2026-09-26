@@ -61,4 +61,11 @@ def health():
 if __name__ == "__main__":
     host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", "8000"))
+
+    # Precompute the (deterministic) pipeline once before serving, so the
+    # first request — and every request after it — is instant. This keeps the
+    # heavy compute off the request path, which otherwise exceeds the pod's
+    # memory limit and the Envoy timeout in the cluster.
+    _get_results()
+
     app.run(host=host, port=port, debug=False)

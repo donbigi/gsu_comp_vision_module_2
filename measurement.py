@@ -56,6 +56,13 @@ GROUND_TRUTH = {
 # A bar must be at least this long (in cm) to count.
 MIN_BAR_CM = 1.5
 
+# Corner detection is run on the calibration images downscaled to at most this
+# many pixels on the long side. The 12 MP originals make the segment-based
+# detector allocate ~1 GB; downscaling bounds that, and the detected corners
+# are scaled back to full-resolution coordinates so the calibrated intrinsics
+# still refer to the original image size. (0.02% effect on the result.)
+CALIB_MAX_SIDE = 1800
+
 # Bar detection runs on an upsampled top-down view of the paper so the bars
 # are large and horizontal.  This is an arbitrary processing-resolution factor
 # and encodes no physical size.
@@ -121,7 +128,6 @@ def calibrate_camera() -> dict:
     corner_thumbs = []
 
     image_size = None
-    first_img = None
 
     for image_path in calibration_images:
         img = cv2.imread(str(image_path))
@@ -132,16 +138,28 @@ def calibrate_camera() -> dict:
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         if image_size is None:
             image_size = gray.shape[::-1]
-            first_img = img
 
-        found, corners = cv2.findChessboardCornersSB(
-            gray,
-            CHESSBOARD_SIZE,
-            flags=cv2.CALIB_CB_EXHAUSTIVE | cv2.CALIB_CB_ACCURACY,
-        )
+        # Detect on a downscaled copy (see CALIB_MAX_SIDE) to bound memory.
+        h, w = gray.shape
+        scale = min(1.0, CALIB_MAX_SIDE / max(h, w))
+        if scale < 1.0:
+            gray_small = cv2.resize(
+                gray, (int(round(w * scale)), int(round(h * scale))),
+                interpolation=cv2.INTER_AREA,
+            )
+        else:
+            gray_small = gray
+
+        # Plain findChessboardCornersSB (no CALIB_CB_EXHAUSTIVE / ACCURACY
+        # flags). Those flags make the search far more CPU- and memory-hungry
+        # (~3+ GB peak vs well under 1 GB), which OOM-kills the pod in the
+        # cluster; on these clear boards they change the result by <0.02%.
+        found, corners = cv2.findChessboardCornersSB(gray_small, CHESSBOARD_SIZE)
 
         if found:
             obj_points.append(object_points.copy())
+            if scale < 1.0:
+                corners = (corners.astype(np.float64) / scale).astype(np.float32)
             img_points.append(corners)
 
             vis = img.copy()
