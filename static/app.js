@@ -2,12 +2,6 @@
 
 const $ = (id) => document.getElementById(id);
 
-function setStatus(text, cls) {
-  const el = $("status");
-  el.textContent = text;
-  el.className = "status" + (cls ? " " + cls : "");
-}
-
 function num(value, digits = 2) {
   if (value === null || value === undefined) return "—";
   return Number(value).toFixed(digits);
@@ -19,12 +13,10 @@ function formatMatrix(matrix) {
     .join("\n");
 }
 
-function renderCalibration(cal) {
+function renderCalibration(cal, proj) {
   $("c-detected").textContent = `${cal.num_detected}/${cal.num_images}`;
   $("c-rms").textContent = num(cal.rms, 4) + " px";
   $("c-mean").textContent = num(cal.mean_reprojection, 4) + " px";
-
-  const proj = window.__projection;
   $("c-fx").textContent = num(proj.fx, 1) + " px";
 
   $("c-matrix").textContent = formatMatrix(cal.camera_matrix);
@@ -80,7 +72,6 @@ function renderMeasurements(measurements) {
       panels.appendChild(fig);
     });
 
-    // Per-bar table.
     const wrap = document.createElement("div");
     wrap.className = "table-wrap";
     const table = document.createElement("table");
@@ -118,45 +109,25 @@ function renderValidation(stats, errorPlot) {
   $("error-plot").src = errorPlot;
 }
 
-async function runPipeline(force = false) {
-  const btn = $("run");
-  btn.disabled = true;
-  setStatus(force ? "Re-running…" : "Running…", "running");
-  $("error").hidden = true;
-
+async function loadResults() {
   try {
-    const resp = await fetch("/api/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ force }),
-    });
+    const resp = await fetch("/api/results");
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
     const data = await resp.json();
-    if (!resp.ok || data.error) {
-      throw new Error(data.error || `HTTP ${resp.status}`);
-    }
+    if (data.error) throw new Error(data.error);
 
-    window.__projection = data.projection;
-
-    renderCalibration(data.calibration);
+    renderCalibration(data.calibration, data.projection);
     renderMeasurements(data.measurements);
     renderValidation(data.stats, data.error_plot);
 
     $("calibration").hidden = false;
     $("measurements").hidden = false;
     $("validation").hidden = false;
-
-    setStatus("Done", "done");
   } catch (err) {
     const el = $("error");
     el.textContent = "Error: " + err.message;
     el.hidden = false;
-    setStatus("Failed", "error");
-  } finally {
-    btn.disabled = false;
   }
 }
 
-$("run").addEventListener("click", () => runPipeline(false));
-
-// Run automatically on load.
-runPipeline(false);
+loadResults();

@@ -1,5 +1,7 @@
-# Camera calibration + perspective-projection measurement demo.
-# Serves the Flask web app on port 8000.
+# Camera calibration + measurement demo — serves precomputed results.
+# No OpenCV/numpy at runtime: the pipeline is run offline by generate_results.py
+# and baked in as static/results.json, so this image is small and never runs
+# heavy compute in the pod.
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -7,18 +9,12 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# System libraries needed by OpenCV (headless) on Debian slim.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        libgl1 \
-        libglib2.0-0 \
-        libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies first (cached layer).
+# Flask is the only runtime dependency.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application (calibration/ and measurement/ images included).
+# Copy the application (templates/, static/, app.py) plus the precomputed
+# results.json already inside static/.
 COPY . .
 
 # Run as an unprivileged user.
