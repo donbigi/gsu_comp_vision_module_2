@@ -1,0 +1,8 @@
+services:
+  calibration:
+    build: .
+    image: gsu-cv-module2-calibration:latest
+    container_name: calibration-demo
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

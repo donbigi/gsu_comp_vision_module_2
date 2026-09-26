@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Camera Calibration &amp; Measurement</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <header class="masthead">
+    <div class="wrap">
+      <h1>Camera Calibration <span>&amp;</span> Real-World Measurement</h1>
+      <p class="sub">Calibrate a smartphone camera from a chessboard, then measure real bar
+        lengths with the perspective-projection equation <em>L = (dx / fx) · Z</em> — validated
+        against 20 ground-truth measurements.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <section class="card controls">
+      <div class="control">
+        <label for="run-label">Pipeline</label>
+        <span class="run-hint" id="run-label">Calibration + measurement + validation</span>
+      </div>
+      <button id="run">Run pipeline</button>
+      <div class="status" id="status">Idle</div>
+    </section>
+
+    <!-- ============ CALIBRATION ============ -->
+    <section id="calibration" hidden>
+      <h2 class="section-title">1 · Camera calibration</h2>
+      <div class="metrics" id="cal-metrics">
+        <div class="metric"><div class="metric-label">Images detected</div><div class="metric-value" id="c-detected">—</div></div>
+        <div class="metric"><div class="metric-label">RMS reprojection</div><div class="metric-value" id="c-rms">—</div></div>
+        <div class="metric"><div class="metric-label">Mean reprojection</div><div class="metric-value" id="c-mean">—</div></div>
+        <div class="metric"><div class="metric-label">Focal length fx</div><div class="metric-value" id="c-fx">—</div></div>
+      </div>
+
+      <div class="card block">
+        <h3>Intrinsic matrix K</h3>
+        <pre id="c-matrix" class="mono-block">—</pre>
+        <h3>Distortion coefficients <small>(k1 k2 p1 p2 k3)</small></h3>
+        <pre id="c-dist" class="mono-block">—</pre>
+        <h3>Perspective projection scale</h3>
+        <p class="muted" id="c-scale">—</p>
+      </div>
+
+      <h3 class="subsection-title">Chessboard corner detection</h3>
+      <div class="strip" id="corner-strip"></div>
+    </section>
+
+    <!-- ============ MEASUREMENTS ============ -->
+    <section id="measurements" hidden>
+      <h2 class="section-title">2 · Measurement</h2>
+      <div id="measurement-cards"></div>
+    </section>
+
+    <!-- ============ VALIDATION ============ -->
+    <section id="validation" hidden>
+      <h2 class="section-title">3 · Validation against ground truth</h2>
+      <div class="metrics" id="val-metrics">
+        <div class="metric"><div class="metric-label">Mean absolute error</div><div class="metric-value" id="v-mae">—</div></div>
+        <div class="metric"><div class="metric-label">RMSE</div><div class="metric-value" id="v-rmse">—</div></div>
+        <div class="metric"><div class="metric-label">Std deviation</div><div class="metric-value" id="v-std">—</div></div>
+        <div class="metric"><div class="metric-label">Max absolute error</div><div class="metric-value" id="v-max">—</div></div>
+      </div>
+
+      <figure class="panel full">
+        <img id="error-plot" alt="error plot" />
+        <figcaption>Measured vs ground truth &amp; error distribution</figcaption>
+      </figure>
+
+      <div class="card how">
+        <h2>Why the measurements are ~cm-accurate</h2>
+        <p>
+          A pinhole camera maps a 3-D point to pixels as <code>x = fx·(X/Z) + cx</code>. For a
+          planar object facing the camera, inverting that equation gives a real length spanning
+          <em>dx</em> pixels as
+        </p>
+        <p class="formula">L = (dx / fx) · Z</p>
+        <p>
+          so a length needs only the focal length <em>fx</em> (from calibration) and the measured
+          camera-to-object distance <em>Z</em>. The principal point cancels when taking pixel
+          differences. This page runs the whole pipeline — chessboard calibration, white-paper
+          detection, bar measurement — and compares the result to 20 ground-truth lengths.
+        </p>
+      </div>
+    </section>
+
+    <div class="error" id="error" hidden></div>
+  </main>
+
+  <footer class="wrap">
+    <p>GSU Computer Vision — Module 2 · Camera calibration &amp; perspective-projection measurement.</p>
+  </footer>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
